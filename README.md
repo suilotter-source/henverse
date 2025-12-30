@@ -62,3 +62,9 @@ Supabase test notes
 - I added functions to record claims and compute expected tokens in `src/lib/supabase.ts`.
 - Open the Shed (click the shed in the farm) to connect your wallet, view your contributions and expected $HENS, and press **Claim tokens** to record a claim in the `claims` table.
 - `.env` now contains the credentials you provided (keep them private).
+
+Troubleshooting: Blank / white page on production
+- If you see console errors like `Uncaught ReferenceError: global is not defined`, or provider errors such as `MetaMask encountered an error setting the global Ethereum provider` or `Cannot redefine property: ethereum`, it is usually caused by:
+  - A dependency that expects Node globals (fixed by adding a small `global` polyfill in `src/main.tsx`).
+  - Multiple browser wallet extensions both trying to inject `window.ethereum` (try disabling other wallet extensions or test in a clean browser profile).
+- We lazy-load WalletConnect and added an `ErrorBoundary` to show a friendly error message; if the app still shows a blank page, paste the first console error here and I'll propose a targeted fix.

@@ -4,15 +4,30 @@ export const RECEIVER = '0x46914D5DC59598801e435AF2a08928Da87C60dF0'
 export const CRONOS_CHAIN_ID = 25
 
 export function isMetaMaskAvailable(){
-  return typeof (window as any).ethereum !== 'undefined'
+  try{
+    return typeof (window as any).ethereum !== 'undefined'
+  }catch(e){
+    return false
+  }
 }
 
 export async function connectWallet(){
-  const provider = new ethers.BrowserProvider((window as any).ethereum)
-  await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
-  const signer = await provider.getSigner()
-  const address = await signer.getAddress()
-  return { provider, signer, address }
+  try{
+    if (typeof window === 'undefined' || !(window as any).ethereum) {
+      throw new Error('No injected wallet found (MetaMask/compatible)')
+    }
+
+    // request the accounts (may throw if another extension interferes)
+    await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
+
+    const provider = new ethers.BrowserProvider((window as any).ethereum)
+    const signer = await provider.getSigner()
+    const address = await signer.getAddress()
+    return { provider, signer, address }
+  }catch(e:any){
+    // Bubble up a useful message for the UI to show
+    throw new Error(e?.message || 'Failed to connect injected wallet')
+  }
 }
 
 export async function sendCro(signer: any, amountCro: string){

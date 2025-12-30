@@ -1,4 +1,3 @@
-import WalletConnectProvider from '@walletconnect/web3-provider'
 import { ethers } from 'ethers'
 
 // Cronos public RPC for WalletConnect; you may want to use your own RPC endpoint
@@ -7,6 +6,9 @@ const RPC = {
 }
 
 export async function connectWalletConnect(){
+  // Dynamically import the WalletConnect provider so it doesn't bloat/introduce Node-only shims
+  const mod = await import('@walletconnect/web3-provider')
+  const WalletConnectProvider = (mod as any).default
   const provider = new (WalletConnectProvider as any)({ rpc: RPC })
   // opens QR modal in browsers
   await provider.enable()
