@@ -58,10 +58,18 @@ Next steps implemented in repo
 - Supabase client and schemas
 - Wallet & transaction helper utilities (in `src/lib`) — **WalletConnect is now supported** using `@walletconnect/web3-provider`. Run `npm install` to fetch the new dependency, then use the human "Buy" flow to connect via QR or MetaMask.
 
-Supabase test notes
-- I added functions to record claims and compute expected tokens in `src/lib/supabase.ts`.
-- Open the Shed (click the shed in the farm) to connect your wallet, view your contributions and expected $HENS, and press **Claim tokens** to record a claim in the `claims` table.
-- `.env` now contains the credentials you provided (keep them private).
+This repository has been replaced with the user's requested single-file React app (HensPresale).
+
+Usage
+1. Set environment variables in `.env`:
+   - VITE_SUPABASE_URL
+   - VITE_SUPABASE_ANON_KEY
+2. Install dependencies: `npm install`
+3. Run dev: `npm run dev`
+
+Notes
+- The app uses direct Supabase REST calls (no supabase-js package). Ensure your Supabase tables `contributions` and `transactions` exist and the anon key has REST access.
+- If you want me to remove old support files or reset git history, confirm and I'll proceed (note: I cannot rewrite remote git history without your permission and explicit confirmation).
 
 Troubleshooting: Blank / white page on production
 - If you see console errors like `Uncaught ReferenceError: global is not defined`, or provider errors such as `MetaMask encountered an error setting the global Ethereum provider` or `Cannot redefine property: ethereum`, it is usually caused by:
