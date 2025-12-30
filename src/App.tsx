@@ -136,19 +136,27 @@ const HensPresale: React.FC = () => {
         }],
       })
 
+      // Optimistically append the transaction locally so UI updates immediately
+      const pendingTx = {
+        wallet_address: walletAddress.toLowerCase(),
+        amount: parseFloat(croAmount),
+        tx_hash: txHash,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      }
+      setTransactions(prev => [pendingTx, ...prev])
+
       // Log transaction to Supabase
       await supabaseRequest('transactions', {
         method: 'POST',
-        body: JSON.stringify({
-          wallet_address: walletAddress.toLowerCase(),
-          amount: parseFloat(croAmount),
-          tx_hash: txHash,
-          status: 'pending',
-        }),
+        body: JSON.stringify(pendingTx),
       })
 
-      // Update user contribution
+      // Update user contribution (optimistic + server)
       const newTotal = userContribution + parseFloat(croAmount)
+      setUserContribution(newTotal)
+      setTotalRaised(prev => prev + parseFloat(croAmount))
+
       await supabaseRequest('contributions', {
         method: 'POST',
         body: JSON.stringify({
@@ -160,7 +168,6 @@ const HensPresale: React.FC = () => {
       alert('Transaction submitted! Your $HENS tokens will be claimable on TGE.')
       setCroAmount('')
       setShowPresaleModal(false)
-      await loadUserData(walletAddress)
     } catch (error) {
       console.error('Transaction error:', error)
       alert('Transaction failed. Please try again.')
@@ -175,18 +182,55 @@ const HensPresale: React.FC = () => {
     return (userContribution / totalRaised) * PRESALE_ALLOCATION
   }
 
-  // reload totals on mount
+  // reload totals and set up realtime subscriptions on mount
   useEffect(()=>{
-    if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY){
-      (async ()=>{
-        // fetch totals
+    let txSub: any = null
+    let contribSub: any = null
+    let polling: any = null
+
+    async function init(){
+      if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY){
         try{
           const totals:any = await supabaseRequest('contributions?select=total_contribution')
           if (totals) setTotalRaised(totals.reduce((s:any,i:any)=>s+parseFloat(i.total_contribution||0),0))
         }catch(e){/* ignore */}
-      })()
+
+        // Set up realtime subscriptions using supabase-js if available
+        try{
+          const { subscribeToTransactions, subscribeToContributions } = await import('./lib/supabaseClient')
+          txSub = subscribeToTransactions((tx:any)=>{
+            // prepend new tx
+            setTransactions(prev => [tx, ...prev])
+          })
+          contribSub = subscribeToContributions((row:any)=>{
+            // update totals when a new contribution row is inserted
+            setTotalRaised(prev => prev + Number(row.total_contribution || 0))
+            // if current wallet updated, refresh user contribution
+            if (walletAddress && row.wallet_address === walletAddress.toLowerCase()){
+              setUserContribution(prev => prev + Number(row.total_contribution || 0))
+            }
+          })
+        }catch(e){
+          // if realtime fails, fall back to polling every 10s
+          polling = setInterval(async ()=>{
+            if (walletAddress) {
+              try{ const txs:any = await supabaseRequest(`transactions?wallet_address=eq.${walletAddress.toLowerCase()}&order=created_at.desc&limit=10`) ; if (txs) setTransactions(txs) }catch(e){}
+              try{ const totals:any = await supabaseRequest('contributions?select=total_contribution') ; if (totals) setTotalRaised(totals.reduce((s:any,i:any)=>s+parseFloat(i.total_contribution||0),0)) }catch(e){}
+            }
+          }, 10000)
+        }
+      }
     }
-  },[])
+
+    init()
+
+    return ()=>{
+      if (txSub && txSub.unsubscribe) txSub.unsubscribe()
+      if (contribSub && contribSub.unsubscribe) contribSub.unsubscribe()
+      if (polling) clearInterval(polling)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[walletAddress])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-300 via-sky-200 to-green-200 relative overflow-hidden">

@@ -68,7 +68,8 @@ Usage
 3. Run dev: `npm run dev`
 
 Notes
-- The app uses direct Supabase REST calls (no supabase-js package). Ensure your Supabase tables `contributions` and `transactions` exist and the anon key has REST access.
+- The app uses direct Supabase REST calls but now also attempts realtime subscriptions via `@supabase/supabase-js` if env vars are set.
+- If realtime is available the UI will update automatically when other users insert transactions; otherwise the app falls back to polling every 10s. Ensure your Supabase `realtime` feature is enabled for the `transactions` and `contributions` tables.
 - If you want me to remove old support files or reset git history, confirm and I'll proceed (note: I cannot rewrite remote git history without your permission and explicit confirmation).
 
 Troubleshooting: Blank / white page on production
